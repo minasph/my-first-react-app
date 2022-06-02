@@ -1,22 +1,33 @@
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import './styles/App.css';
 import PostList from "./components/PostList";
 import PostForm from "./components/PostForm";
 import PostFilter from "./components/PostFilter";
 import MyModal from "./components/UI/modal/MyModal";
 import MyButton from "./components/UI/button/MyButton";
+import {usePosts} from "./hooks/usePosts";
+import axios from "axios";
+import PostService from "./API/PostService";
+import Loader from "./components/UI/Loader/Loader";
 
 function App() {
 
-    const [posts, setPosts] = React.useState([
-        {id: 1, title: 'Привет', body: 'это я'},
-        {id: 2, title: 'Здравствуй', body: 'я приветствую'},
-        {id: 3, title: 'Хеллоу ', body: 'итс ми'},
-        {id: 4, title: 'Куку ', body: 'гык'}
-    ])
-
+    const [posts, setPosts] = React.useState([])
     const [filter, setFilter] = useState({sort: '', query: ''});
     const [modal, setModal] = useState(false)
+    const sortedAndSearchPosts = usePosts(posts, filter.sort, filter.query);
+    const [isPostsLoading, setIsPostsLoading] = useState(false)
+
+    React.useEffect(() => {
+        fetchPosts()
+    }, [])
+
+    async function fetchPosts() {
+        setIsPostsLoading(true)
+        const posts = await PostService.getAll();
+        setPosts(posts)
+        setIsPostsLoading(false)
+    }
 
     const createPost = (newPost) => {
         setPosts([...posts, newPost])
@@ -26,18 +37,9 @@ function App() {
         setPosts(posts.filter(p => p.id !== post.id))
     }
 
-    const sortedPosts = React.useMemo(() => {
-        if (filter.sort) {
-            return [...posts].sort((a, b) => a[filter.sort].localeCompare(b[filter.sort]))
-        }
-        return posts
 
-    }, [filter.sort, posts])
 
-    const sortedAndSearchPosts = React.useMemo(() => {
-        return sortedPosts.filter(post => post.title.toLowerCase().includes(filter.query.toLowerCase()))
 
-    }, [filter.query, sortedPosts])
 
 
     return (
@@ -55,7 +57,10 @@ function App() {
                 filter={filter}
                 setFilter={setFilter}
             />
-            <PostList remove={removePost} posts={sortedAndSearchPosts} title='Список постов'/>
+            {isPostsLoading
+                ? <div style={{display: 'flex',justifyContent: 'center', marginTop: '80px'}}><Loader/></div>
+                : <PostList remove={removePost} posts={sortedAndSearchPosts} title='Список постов'/>
+            }
         </div>
     );
 }
